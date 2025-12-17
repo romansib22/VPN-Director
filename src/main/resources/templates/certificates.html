@@ -1,0 +1,193 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Сертификаты - VPN Director</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+            background: #f5f5f5;
+            min-height: 100vh;
+        }
+
+        .header {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 20px 30px;
+            box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+        }
+
+        .header-content {
+            max-width: 1200px;
+            margin: 0 auto;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .header h1 {
+            font-size: 24px;
+            font-weight: 600;
+        }
+
+        .logout-btn {
+            background: rgba(255, 255, 255, 0.2);
+            color: white;
+            padding: 8px 16px;
+            border: none;
+            border-radius: 6px;
+            cursor: pointer;
+            text-decoration: none;
+            font-size: 14px;
+            transition: background 0.3s;
+        }
+
+        .logout-btn:hover {
+            background: rgba(255, 255, 255, 0.3);
+        }
+
+        .container {
+            max-width: 1200px;
+            margin: 30px auto;
+            padding: 0 30px;
+        }
+
+        .card {
+            background: white;
+            border-radius: 12px;
+            box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+            padding: 30px;
+        }
+
+        .card h2 {
+            color: #333;
+            font-size: 24px;
+            margin-bottom: 20px;
+        }
+
+        .certificates-table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 20px;
+        }
+
+        .certificates-table th {
+            background: #f8f9fa;
+            padding: 12px 16px;
+            text-align: left;
+            font-weight: 600;
+            color: #333;
+            border-bottom: 2px solid #dee2e6;
+        }
+
+        .certificates-table td {
+            padding: 12px 16px;
+            border-bottom: 1px solid #dee2e6;
+        }
+
+        .certificates-table tr:hover {
+            background: #f8f9fa;
+        }
+
+        .certificates-table tr:last-child td {
+            border-bottom: none;
+        }
+
+        .btn {
+            padding: 8px 16px;
+            border: none;
+            border-radius: 6px;
+            font-size: 14px;
+            font-weight: 500;
+            cursor: pointer;
+            transition: all 0.2s;
+            text-decoration: none;
+            display: inline-block;
+        }
+
+        .btn-primary {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+        }
+
+        .btn-primary:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(102, 126, 234, 0.4);
+        }
+
+        .btn-secondary {
+            background: #6c757d;
+            color: white;
+        }
+
+        .btn-secondary:hover {
+            background: #5a6268;
+        }
+
+        .empty-state {
+            text-align: center;
+            padding: 40px;
+            color: #666;
+        }
+    </style>
+</head>
+<body>
+    <div class="header">
+        <div class="header-content">
+            <h1>🔐 Просмотр сертификатов</h1>
+            <form th:action="@{/logout}" method="post" style="display: inline;">
+                <button type="submit" class="logout-btn">Выйти</button>
+            </form>
+        </div>
+    </div>
+
+    <div class="container">
+        <div class="card">
+            <h2>Выданные сертификаты</h2>
+            
+            <table class="certificates-table" th:if="${certificates != null and !certificates.isEmpty()}">
+                <thead>
+                    <tr>
+                        <th>Имя сертификата</th>
+                        <th>Скачать конфиг</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr th:each="cert : ${certificates}">
+                        <td th:text="${cert.name}">-</td>
+                        <td th:if="${cert.hasFiles}">
+                            <form th:action="@{/certificates/download/tunnel}" method="post" style="display: inline; margin-right: 10px;">
+                                <input type="hidden" name="certificateName" th:value="${cert.name}">
+                                <button type="submit" class="btn btn-primary">для тоннеля</button>
+                            </form>
+                            <form th:action="@{/certificates/download/routes}" method="post" style="display: inline;">
+                                <input type="hidden" name="certificateName" th:value="${cert.name}">
+                                <button type="submit" class="btn btn-primary">для маршрутов</button>
+                            </form>
+                        </td>
+                        <td th:if="${!cert.hasFiles}">
+                            <span style="color: #999;">Файлы не найдены</span>
+                        </td>
+                    </tr>
+                </tbody>
+            </table>
+            
+            <div class="empty-state" th:if="${certificates == null or certificates.isEmpty()}">
+                <p>Сертификаты не найдены</p>
+            </div>
+
+            <div style="margin-top: 20px;">
+                <a th:href="@{/}" class="btn btn-secondary">← Назад</a>
+            </div>
+        </div>
+    </div>
+</body>
+</html>
+

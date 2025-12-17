@@ -1,0 +1,21 @@
+spring:
+  application:
+    name: vpndirector
+
+server:
+  port: ${SERVER_PORT:8080}
+  servlet:
+    context-path: ${SERVER_CONTEXT_PATH:/}
+
+openvpn:
+  server:
+    openvpn-root: ${OPENVPN_ROOT:/etc/openvpn}
+    config-file-name: ${OPENVPN_CONFIG_FILE_NAME:server.conf}
+    config-encoding: ${OPENVPN_CONFIG_ENCODING:Windows-1251}  # Кодировка файла конфигурации (Windows-1251, UTF-8, CP866, KOI8-R и т.д.)
+    easy-rsa-path: ${OPENVPN_EASY_RSA_PATH:/etc/openvpn/easy-rsa/2.0}
+
+security:
+  user:
+    name: ${SECURITY_USER_NAME:admin}
+    password: ${SECURITY_USER_PASSWORD:}
+

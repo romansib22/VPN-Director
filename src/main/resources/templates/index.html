@@ -1,0 +1,186 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Главная - VPN Director</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+            background: #f5f5f5;
+            min-height: 100vh;
+        }
+
+        .header {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 20px 30px;
+            box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+        }
+
+        .header-content {
+            max-width: 1200px;
+            margin: 0 auto;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .header h1 {
+            font-size: 24px;
+            font-weight: 600;
+        }
+
+        .logout-btn {
+            background: rgba(255, 255, 255, 0.2);
+            color: white;
+            padding: 8px 16px;
+            border: none;
+            border-radius: 6px;
+            cursor: pointer;
+            text-decoration: none;
+            font-size: 14px;
+            transition: background 0.3s;
+        }
+
+        .logout-btn:hover {
+            background: rgba(255, 255, 255, 0.3);
+        }
+
+        .container {
+            max-width: 1200px;
+            margin: 40px auto;
+            padding: 0 30px;
+        }
+
+        .welcome-section {
+            background: white;
+            border-radius: 12px;
+            box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+            padding: 40px;
+            margin-bottom: 30px;
+            text-align: center;
+        }
+
+        .welcome-section h2 {
+            color: #333;
+            font-size: 28px;
+            margin-bottom: 10px;
+        }
+
+        .welcome-section p {
+            color: #666;
+            font-size: 16px;
+        }
+
+        .menu-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: 20px;
+        }
+
+        .menu-card {
+            background: white;
+            border-radius: 12px;
+            box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+            padding: 30px;
+            text-decoration: none;
+            color: inherit;
+            display: block;
+            transition: all 0.3s;
+            border: 2px solid transparent;
+        }
+
+        .menu-card:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 5px 20px rgba(0, 0, 0, 0.15);
+            border-color: #667eea;
+        }
+
+        .menu-card-icon {
+            font-size: 48px;
+            margin-bottom: 15px;
+        }
+
+        .menu-card h3 {
+            color: #333;
+            font-size: 20px;
+            margin-bottom: 10px;
+        }
+
+        .menu-card p {
+            color: #666;
+            font-size: 14px;
+            line-height: 1.6;
+        }
+    </style>
+</head>
+<body>
+    <div class="header">
+        <div class="header-content">
+            <h1>🔧 VPN Director</h1>
+            <form th:action="@{/logout}" method="post" style="display: inline;">
+                <button type="submit" class="logout-btn">Выйти</button>
+            </form>
+        </div>
+    </div>
+
+    <div class="container">
+        <div class="welcome-section">
+            <h2>Добро пожаловать в VPN Director</h2>
+            <p>Выберите раздел для управления OpenVPN сервером</p>
+        </div>
+
+        <div class="menu-grid">
+            <a th:href="@{/editor}" class="menu-card">
+                <div class="menu-card-icon">📝</div>
+                <h3>Редактирование конфигурационного файла</h3>
+                <p>Редактирование основного конфигурационного файла OpenVPN сервера</p>
+            </a>
+
+            <a th:href="@{/add-ip}" class="menu-card">
+                <div class="menu-card-icon">➕</div>
+                <h3>Добавление IP адреса</h3>
+                <p>Добавить новый IP адрес в конфигурацию OpenVPN</p>
+            </a>
+
+            <a th:href="@{/add-ip-by-domain}" class="menu-card">
+                <div class="menu-card-icon">🌐</div>
+                <h3>Добавление IP адреса по домену</h3>
+                <p>Добавить IP адрес, полученный по доменному имени</p>
+            </a>
+
+            <a th:href="@{/connections}" class="menu-card">
+                <div class="menu-card-icon">📊</div>
+                <h3>Просмотр подключений</h3>
+                <p>Просмотр активных подключений к OpenVPN серверу</p>
+            </a>
+
+            <a th:href="@{/certificates}" class="menu-card">
+                <div class="menu-card-icon">🔐</div>
+                <h3>Просмотр выданных сертификатов</h3>
+                <p>Просмотр списка всех выданных клиентских сертификатов</p>
+            </a>
+
+            <a th:href="@{/restart}" class="menu-card">
+                <div class="menu-card-icon">🔄</div>
+                <h3>Перезапустить OpenVPN</h3>
+                <p>Перезапустить службу OpenVPN сервера</p>
+            </a>
+
+            <a th:href="@{/generate-certificate}" class="menu-card">
+                <div class="menu-card-icon">📜</div>
+                <h3>Выпустить сертификат</h3>
+                <p>Создать новый клиентский сертификат для OpenVPN</p>
+            </a>
+        </div>
+    </div>
+</body>
+</html>
+
