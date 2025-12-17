@@ -48,7 +48,7 @@ public class CertificateController {
                         continue;
                     }
                     
-                    // Парсим строку формата: V	270111231001Z		02	unknown	/C=RU/ST=CFO/L=Moscow/O=rs/OU=MyOrganizationalUnit/CN=rstablet/name=EasyRSA/emailAddress=roman@romansib.ru
+                    // Парсим строку формата: V	270111231001Z		02	unknown	/C=RU/ST=CFO/L=Moscow/O=rs/OU=MyOrganizationalUnit/CN=someSertName/name=EasyRSA/emailAddress=my@email.ru
                     String certificateName = extractCertificateName(line);
                     if (certificateName != null && !certificateName.isEmpty()) {
                         boolean hasFiles = checkCertificateFiles(certificateName, keysDir);
