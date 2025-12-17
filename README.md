@@ -29,7 +29,7 @@ Java 11
 #Настройка nginx. пример конфига, учитывая порт приложения
 Если location отличен от /, то сделать соответствующую настройку в .env-файле (параметр SERVER_CONTEXT_PATH)
 
-##VPN Director
+``##VPN Director
 server {
         listen 80;
         listen [::]:80;        
@@ -59,4 +59,4 @@ server {
                 # Отключение буферизации для SSE (если используется)
                 proxy_buffering off;
         }
-}
+}``
