@@ -180,7 +180,7 @@ public class OpenVpnStatusService {
 
     /**
      * Парсит строку подключения
-     * Формат: kocmocRouter1,46.39.231.140:14067,12689039,25101420,2025-12-16 14:18:32
+     * Формат: kocmoc,46.39.231.140:14067,12689039,25101420,2025-12-16 14:18:32
      */
     private ClientConnection parseConnectionLine(String line) {
         try {
