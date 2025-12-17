@@ -26,8 +26,9 @@ Java 11
 3. запустить: systemctl start vpndirector.service
 4. проверить статус: systemctl status vpndirector.service
 
-#Настройка nginx. пример конфига, учитывая порт приложения
-Если location отличен от /, то сделать соответствующую настройку в .env-файле (параметр SERVER_CONTEXT_PATH)
+#Настройка nginx
+Отредактируйте данный форагмент, исходя из порта приложения.
+Если location отличен от /, то необходимо сделать соответствующую настройку в .env-файле (параметр SERVER_CONTEXT_PATH)
 
     ##VPN Director
     server {
