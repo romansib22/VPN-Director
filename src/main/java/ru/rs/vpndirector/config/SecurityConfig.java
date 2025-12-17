@@ -4,6 +4,7 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
+import org.springframework.security.config.annotation.web.builders.WebSecurity;
 import org.springframework.security.config.annotation.web.configuration.EnableWebSecurity;
 import org.springframework.security.config.annotation.web.configuration.WebSecurityConfigurerAdapter;
 import org.springframework.security.core.userdetails.User;
@@ -21,10 +22,15 @@ public class SecurityConfig extends WebSecurityConfigurerAdapter {
     private final SecurityProperties securityProperties;
 
     @Override
+    public void configure(WebSecurity web) throws Exception {
+        web.ignoring().antMatchers("/css/**", "/js/**", "/webjars/**", "/favicon.png", "/favicon.ico", "/images/**");
+    }
+
+    @Override
     protected void configure(HttpSecurity http) throws Exception {
         http
             .authorizeRequests()
-                .antMatchers("/css/**", "/js/**", "/webjars/**").permitAll()
+                .antMatchers("/css/**", "/js/**", "/webjars/**", "/favicon.png", "/favicon.ico", "/images/**").permitAll()
                 .anyRequest().authenticated()
             .and()
             .formLogin()
