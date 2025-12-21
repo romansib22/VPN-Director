@@ -7,6 +7,9 @@ import ru.rs.vpndirector.config.OpenVpnProperties;
 
 import java.io.BufferedReader;
 import java.io.InputStreamReader;
+import java.io.OutputStreamWriter;
+import java.io.PrintWriter;
+import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
@@ -39,30 +42,79 @@ public class CertificateGenerationService {
 
             // Выполняем команды в правильной последовательности
             // 1. Переходим в директорию и загружаем vars
-            // 2. Выполняем build-key с автоматическими ответами
-            // build-key задает 10 вопросов (все Enter), затем 2 вопроса "Sign the certificate? [y/n]" (y) с задержкой 1 сек
+            // 2. Выполняем build-key с автоматическими ответами через stdin
+            // build-key задает 10 вопросов (все Enter для значений по умолчанию),
+            // затем 2 вопроса "Sign the certificate? [y/n]" (y) и "commit? [y/n]" (y)
             
-            // Создаем команду с автоматическими ответами
-            // 10 раз Enter, затем задержка 1 сек, первый y, задержка 1 сек, второй y, затем Enter
+            // Отключаем буферизацию вывода для более надежной работы
             String command = String.format(
-                "cd %s && . %s/vars && " +
-                "(for i in {1..10}; do echo ''; done; " +
-                "sleep 1; echo 'y'; echo ''; sleep 1; echo 'y'; echo '') | ./build-key %s",
+                "cd %s && . %s/vars && stdbuf -oL -eL ./build-key %s",
                 easyRsaPath, easyRsaPath, certificateName
             );
             
             ProcessBuilder processBuilder = new ProcessBuilder("bash", "-c", command);
             processBuilder.redirectErrorStream(true);
             Process process = processBuilder.start();
-
+            
+            final PrintWriter writer = new PrintWriter(
+                new OutputStreamWriter(process.getOutputStream(), StandardCharsets.UTF_8), true);
+            
             StringBuilder output = new StringBuilder();
+            log.info("Генерация сертификата {}...", certificateName);
+            
+            // Используем отдельный поток для отправки ответов с задержками
+            // Этот поток будет отправлять ответы автоматически через определенные интервалы
+            Thread answerThread = new Thread(() -> {
+                try {
+                    // Даем команде время на запуск и генерацию ключей
+                    Thread.sleep(3000);
+                    
+                    // Отправляем 10 пустых строк для ответов на вопросы (значения по умолчанию)
+                    for (int i = 0; i < 10; i++) {
+                        writer.println();
+                        writer.flush();
+                        Thread.sleep(400);
+                    }
+                    
+                    // Ждем появления вопросов о подписи
+                    Thread.sleep(3000);
+                    
+                    // Отправляем 'y' для "Sign the certificate?"
+                    writer.println("y");
+                    writer.flush();
+                    
+                    // Ждем следующего вопроса
+                    Thread.sleep(2000);
+                    
+                    // Отправляем 'y' для "commit?"
+                    writer.println("y");
+                    writer.flush();
+                    
+                    Thread.sleep(500);
+                } catch (InterruptedException e) {
+                    Thread.currentThread().interrupt();
+                    log.warn("Поток отправки ответов прерван");
+                }
+            });
+            
+            answerThread.setDaemon(true);
+            answerThread.start();
+            
             try (BufferedReader reader = new BufferedReader(
-                    new InputStreamReader(process.getInputStream()))) {
+                    new InputStreamReader(process.getInputStream(), StandardCharsets.UTF_8))) {
                 String line;
                 while ((line = reader.readLine()) != null) {
                     output.append(line).append("\n");
-                    log.debug("build-key output: {}", line);
+                    log.info("build-key output: {}", line);
                 }
+            } finally {
+                // Даем потоку время завершиться
+                try {
+                    answerThread.join(15000);
+                } catch (InterruptedException e) {
+                    Thread.currentThread().interrupt();
+                }
+                writer.close();
             }
 
             int exitCode = process.waitFor();
