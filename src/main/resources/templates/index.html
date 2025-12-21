@@ -125,7 +125,7 @@
 <body>
     <div class="header">
         <div class="header-content">
-            <h1>🔧 VPN Director</h1>
+            <h1>🔧 VPN Director <span style="font-size: 0.7em; opacity: 0.8; font-weight: 400;">v<span th:text="${appVersion}">0.0.2</span></span></h1>
             <form th:action="@{/logout}" method="post" style="display: inline;">
                 <button type="submit" class="logout-btn">Выйти</button>
             </form>
