@@ -29,8 +29,7 @@ Java 11
 Запуск осущетвлять файлом launch.sh
 
 #Установка как сервис в deb-системы:
-1. скопировать vpndirector.service в /etc/systemd/system/
-2.отредактировать файл на предмет пути к .jar
+1. скопировать vpndirector.service в /etc/systemd/system/ ,отредактировать файл на предмет пути к .jar
 3. включить автозапуск: systemctl enable vpndirector.service
 4. запустить: systemctl start vpndirector.service
 5. проверить статус: systemctl status vpndirector.service
