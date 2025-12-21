@@ -6,7 +6,7 @@
  - Добавление маршрутов для подсетей и для отдельных IP по доменному имени, которые будут отправлены клиенту (push route)
  - Выпуск сертификатов для клинетов
  - Просмотр выпущенных сертификатов
- - Генерирация конфигурационных файлы клиентов
+ - Генерация конфигурационных файлов клиентов
  - Просмотр активных соединений
  - Перезапуск Openvpn-сервиса
 
@@ -30,9 +30,10 @@ Java 11
 
 #Установка как сервис в deb-системы:
 1. скопировать vpndirector.service в /etc/systemd/system/
-2. включить автозапуск: systemctl enable vpndirector.service
-3. запустить: systemctl start vpndirector.service
-4. проверить статус: systemctl status vpndirector.service
+2.отредактировать файл на предмет пути к .jar
+3. включить автозапуск: systemctl enable vpndirector.service
+4. запустить: systemctl start vpndirector.service
+5. проверить статус: systemctl status vpndirector.service
 
 ## Настройка nginx
 
