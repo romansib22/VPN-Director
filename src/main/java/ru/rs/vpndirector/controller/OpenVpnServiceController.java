@@ -1,18 +1,23 @@
 package ru.rs.vpndirector.controller;
 
+import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Controller;
 import org.springframework.ui.Model;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.servlet.mvc.support.RedirectAttributes;
+import ru.rs.vpndirector.config.OpenVpnProperties;
 
 import java.io.BufferedReader;
 import java.io.InputStreamReader;
 
 @Slf4j
 @Controller
+@RequiredArgsConstructor
 public class OpenVpnServiceController {
+    
+    private final OpenVpnProperties openVpnProperties;
 
     @GetMapping("/restart")
     public String restartPage(Model model) {
@@ -22,8 +27,13 @@ public class OpenVpnServiceController {
     @PostMapping("/restart")
     public String restartOpenVpn(RedirectAttributes redirectAttributes) {
         try {
+            // Получаем имя файла конфигурации без расширения для systemctl
+            String configName = openVpnProperties.getConfigFileNameWithoutExtension();
+            String serviceName = "openvpn@" + configName;
+            log.info("Перезапуск OpenVPN сервиса: {}", serviceName);
+            
             // Попытка перезапустить OpenVPN через systemctl
-            ProcessBuilder processBuilder = new ProcessBuilder("sudo", "systemctl", "restart", "openvpn@server");
+            ProcessBuilder processBuilder = new ProcessBuilder("sudo", "systemctl", "restart", serviceName);
             processBuilder.redirectErrorStream(true);
             Process process = processBuilder.start();
             

@@ -13,6 +13,7 @@ openvpn:
     config-file-name: ${OPENVPN_CONFIG_FILE_NAME:server.conf}
     config-encoding: ${OPENVPN_CONFIG_ENCODING:Windows-1251}  # Кодировка файла конфигурации (Windows-1251, UTF-8, CP866, KOI8-R и т.д.)
     easy-rsa-path: ${OPENVPN_EASY_RSA_PATH:/etc/openvpn/easy-rsa/2.0}
+    status-file-name: ${OPENVPN_STATUS_FILE_NAME:openvpn-status1194.log}  # Имя файла статуса OpenVPN
 
 security:
   user:

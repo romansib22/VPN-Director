@@ -34,7 +34,7 @@ public class OpenVpnStatusService {
      * Читает файл статуса OpenVPN
      */
     private List<String> readStatusFile() throws IOException {
-        String statusFilePath = openVpnProperties.getOpenvpnRoot() + "/openvpn-status1194.log";
+        String statusFilePath = openVpnProperties.getStatusFilePath();
         Path statusPath = Paths.get(statusFilePath);
         
         if (!Files.exists(statusPath)) {
