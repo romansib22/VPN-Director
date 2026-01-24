@@ -1,0 +1,11 @@
+[Unit]
+Description=vpndirector
+
+[Service]
+#PIDFile=/var/run/vpndirector.pid
+Type=forking
+ExecStart=/usr/local/rs/vpndirector/launch.sh
+#ExecStop=/bin/kill -15 $MAINPID
+
+[Install]
+WantedBy=multi-user.target
