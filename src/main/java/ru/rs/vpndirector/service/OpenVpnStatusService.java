@@ -3,6 +3,7 @@ package ru.rs.vpndirector.service;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
+import ru.rs.vpndirector.config.AppProperties;
 import ru.rs.vpndirector.config.OpenVpnProperties;
 
 import java.io.IOException;
@@ -12,6 +13,7 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.time.Duration;
+import java.time.Instant;
 import java.time.LocalDateTime;
 import java.time.ZoneId;
 import java.time.ZonedDateTime;
@@ -26,9 +28,18 @@ import java.util.List;
 public class OpenVpnStatusService {
 
     private final OpenVpnProperties openVpnProperties;
+    private final AppProperties appProperties;
     private static final DateTimeFormatter INPUT_FORMATTER = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss");
     private static final DateTimeFormatter OUTPUT_FORMATTER = DateTimeFormatter.ofPattern("dd.MM.yyyy HH:mm:ss");
-    private static final ZoneId MOSCOW_ZONE = ZoneId.of("Europe/Moscow");
+    /** Индекс поля Connected Since (читаемая дата) в строке CLIENT_LIST CSV v3 */
+    private static final int CSV_V3_FIELD_CONNECTED_SINCE = 7;
+    /** Индекс поля Connected Since (time_t, unix) в строке CLIENT_LIST CSV v3 */
+    private static final int CSV_V3_FIELD_CONNECTED_SINCE_UNIX = 8;
+
+    private enum StatusFileFormat {
+        LEGACY,
+        CSV_V3
+    }
 
     /**
      * Читает файл статуса OpenVPN
@@ -67,32 +78,27 @@ public class OpenVpnStatusService {
         return StandardCharsets.UTF_8;
     }
 
+    private ZoneId displayZone() {
+        return appProperties.getDisplayZoneId();
+    }
+
     /**
-     * Конвертирует время в московское время
-     * Предполагается, что входное время в UTC или локальном времени сервера
+     * Конвертирует время из UTC (legacy status) в настроенный часовой пояс
      */
-    private String convertToMoscowTime(String timeStr) {
+    private String convertUtcToDisplayTime(String timeStr) {
         if (timeStr == null || timeStr.trim().isEmpty()) {
             return timeStr;
         }
-        
+
         try {
-            // Парсим время (предполагаем формат "yyyy-MM-dd HH:mm:ss")
             LocalDateTime localDateTime = LocalDateTime.parse(timeStr.trim(), INPUT_FORMATTER);
-            
-            // Предполагаем, что время в UTC (OpenVPN обычно логирует в UTC)
-            // Конвертируем в московское время
             ZonedDateTime utcTime = localDateTime.atZone(ZoneId.of("UTC"));
-            ZonedDateTime moscowTime = utcTime.withZoneSameInstant(MOSCOW_ZONE);
-            
-            // Форматируем обратно в строку
-            return moscowTime.format(OUTPUT_FORMATTER);
+            return utcTime.withZoneSameInstant(displayZone()).format(OUTPUT_FORMATTER);
         } catch (DateTimeParseException e) {
-            // Если не удалось распарсить, возвращаем исходную строку
             log.warn("Не удалось распарсить время: {}", timeStr);
             return timeStr;
         } catch (Exception e) {
-            log.warn("Ошибка при конвертации времени в московское: {}", timeStr, e);
+            log.warn("Ошибка при конвертации времени: {}", timeStr, e);
             return timeStr;
         }
     }
@@ -110,20 +116,10 @@ public class OpenVpnStatusService {
             LocalDateTime connectedSince = LocalDateTime.parse(connectedSinceStr.trim(), INPUT_FORMATTER);
             ZonedDateTime connectedSinceZoned = connectedSince.atZone(ZoneId.of("UTC"));
             
-            // Текущее время в московском часовом поясе
-            ZonedDateTime now = ZonedDateTime.now(MOSCOW_ZONE);
-            
-            // Конвертируем время подключения в московское для расчета
-            ZonedDateTime connectedSinceMoscow = connectedSinceZoned.withZoneSameInstant(MOSCOW_ZONE);
-            
-            // Вычисляем разницу
-            Duration duration = Duration.between(connectedSinceMoscow, now);
-            
-            long days = duration.toDays();
-            long hours = duration.toHours() % 24;
-            long minutes = duration.toMinutes() % 60;
-            
-            return String.format("%d дней, %02d часов %02d минут", days, hours, minutes);
+            ZonedDateTime now = ZonedDateTime.now(displayZone());
+            ZonedDateTime connectedSinceDisplay = connectedSinceZoned.withZoneSameInstant(displayZone());
+            Duration duration = Duration.between(connectedSinceDisplay, now);
+            return formatDuration(duration);
         } catch (Exception e) {
             log.warn("Ошибка при вычислении длительности подключения: {}", connectedSinceStr, e);
             return "-";
@@ -131,58 +127,206 @@ public class OpenVpnStatusService {
     }
 
     /**
+     * Форматирует дату/время из CSV v3 (локальное время сервера) в dd.MM.yyyy HH:mm:ss
+     */
+    private String formatCsvV3DateTime(String dateTimeStr) {
+        if (dateTimeStr == null || dateTimeStr.trim().isEmpty()) {
+            return dateTimeStr;
+        }
+        try {
+            LocalDateTime localDateTime = LocalDateTime.parse(dateTimeStr.trim(), INPUT_FORMATTER);
+            return localDateTime.atZone(displayZone()).format(OUTPUT_FORMATTER);
+        } catch (DateTimeParseException e) {
+            log.warn("Не удалось распарсить время CSV v3: {}", dateTimeStr);
+            return dateTimeStr;
+        }
+    }
+
+    /**
+     * Длительность подключения по unix time (поле Connected Since (time_t) в CSV v3)
+     */
+    private String calculateDurationFromUnix(String unixTimeStr) {
+        if (unixTimeStr == null || unixTimeStr.trim().isEmpty()) {
+            return "-";
+        }
+        try {
+            long epochSeconds = Long.parseLong(unixTimeStr.trim());
+            Duration duration = Duration.between(Instant.ofEpochSecond(epochSeconds), Instant.now());
+            if (duration.isNegative()) {
+                duration = Duration.ZERO;
+            }
+            return formatDuration(duration);
+        } catch (NumberFormatException e) {
+            log.warn("Некорректный unix time: {}", unixTimeStr);
+            return "-";
+        }
+    }
+
+    /**
+     * Длительность по читаемой дате CSV v3 (интерпретация в настроенном часовом поясе)
+     */
+    private String calculateDurationFromLocalDateTime(String dateTimeStr) {
+        if (dateTimeStr == null || dateTimeStr.trim().isEmpty()) {
+            return "-";
+        }
+        try {
+            LocalDateTime connectedSince = LocalDateTime.parse(dateTimeStr.trim(), INPUT_FORMATTER);
+            ZonedDateTime connectedZoned = connectedSince.atZone(displayZone());
+            Duration duration = Duration.between(connectedZoned, ZonedDateTime.now(displayZone()));
+            if (duration.isNegative()) {
+                duration = Duration.ZERO;
+            }
+            return formatDuration(duration);
+        } catch (Exception e) {
+            log.warn("Ошибка при вычислении длительности CSV v3: {}", dateTimeStr, e);
+            return "-";
+        }
+    }
+
+    private String formatDuration(Duration duration) {
+        long days = duration.toDays();
+        long hours = duration.toHours() % 24;
+        long minutes = duration.toMinutes() % 60;
+        return String.format("%d дней, %02d часов %02d минут", days, hours, minutes);
+    }
+
+    /**
      * Парсит файл статуса и возвращает информацию о подключениях
      */
     public StatusInfo parseStatusFile() throws IOException {
         List<String> lines = readStatusFile();
-        
+        StatusFileFormat format = detectFormat(lines);
+        log.debug("Формат файла статуса OpenVPN: {}", format);
+        return format == StatusFileFormat.CSV_V3 ? parseCsvV3(lines) : parseLegacy(lines);
+    }
+
+    private StatusFileFormat detectFormat(List<String> lines) {
+        for (String raw : lines) {
+            String line = raw.trim();
+            if (line.startsWith("CLIENT_LIST,") || line.startsWith("HEADER,CLIENT_LIST")) {
+                return StatusFileFormat.CSV_V3;
+            }
+            if (line.equals("OpenVPN CLIENT LIST") || line.startsWith("Updated,")) {
+                return StatusFileFormat.LEGACY;
+            }
+        }
+        return StatusFileFormat.LEGACY;
+    }
+
+    /**
+     * Парсит формат OpenVPN 2.5+ (status-version 3, CSV)
+     */
+    private StatusInfo parseCsvV3(List<String> lines) {
         StatusInfo statusInfo = new StatusInfo();
-        boolean inClientList = false;
-        
-        for (String line : lines) {
-            line = line.trim();
-            
-            // Парсим строку Updated
-            if (line.startsWith("Updated,")) {
-                String updatedStr = line.substring(8).trim();
-                String moscowTime = convertToMoscowTime(updatedStr);
-                statusInfo.setLastUpdate(moscowTime);
+
+        for (String raw : lines) {
+            String line = raw.trim();
+            if (line.isEmpty() || line.equals("END")) {
                 continue;
             }
-            
-            // Начало секции CLIENT LIST
+
+            if (line.startsWith("TIME,")) {
+                String[] parts = line.split(",", 3);
+                if (parts.length >= 2) {
+                    statusInfo.setLastUpdate(formatCsvV3DateTime(parts[1].trim()));
+                }
+                continue;
+            }
+
+            if (!line.startsWith("CLIENT_LIST,")) {
+                continue;
+            }
+
+            ClientConnection connection = parseCsvV3ConnectionLine(line);
+            if (connection != null) {
+                statusInfo.addConnection(connection);
+            }
+        }
+
+        return statusInfo;
+    }
+
+    /**
+     * CLIENT_LIST,name,realAddr,virtualAddr,,bytesRx,bytesTx,connectedSince,connectedSinceUnix,...
+     */
+    private ClientConnection parseCsvV3ConnectionLine(String line) {
+        String[] parts = line.split(",", -1);
+        if (parts.length <= CSV_V3_FIELD_CONNECTED_SINCE) {
+            return null;
+        }
+        try {
+            ClientConnection connection = new ClientConnection();
+            connection.setClientName(parts[1].trim());
+
+            String realAddress = parts[2].trim();
+            int colon = realAddress.indexOf(':');
+            connection.setClientIp(colon > 0 ? realAddress.substring(0, colon) : realAddress);
+
+            String connectedSinceHuman = parts[CSV_V3_FIELD_CONNECTED_SINCE].trim();
+            connection.setConnectedSince(formatCsvV3DateTime(connectedSinceHuman));
+
+            if (parts.length > CSV_V3_FIELD_CONNECTED_SINCE_UNIX) {
+                String connectedSinceUnix = parts[CSV_V3_FIELD_CONNECTED_SINCE_UNIX].trim();
+                if (!connectedSinceUnix.isEmpty() && connectedSinceUnix.chars().allMatch(Character::isDigit)) {
+                    connection.setDuration(calculateDurationFromUnix(connectedSinceUnix));
+                } else {
+                    connection.setDuration(calculateDurationFromLocalDateTime(connectedSinceHuman));
+                }
+            } else {
+                connection.setDuration(calculateDurationFromLocalDateTime(connectedSinceHuman));
+            }
+            return connection;
+        } catch (Exception e) {
+            log.warn("Ошибка при парсинге CLIENT_LIST: {}", line, e);
+            return null;
+        }
+    }
+
+    /**
+     * Парсит legacy-формат (OpenVPN до 2.5)
+     */
+    private StatusInfo parseLegacy(List<String> lines) {
+        StatusInfo statusInfo = new StatusInfo();
+        boolean inClientList = false;
+
+        for (String raw : lines) {
+            String line = raw.trim();
+
+            if (line.startsWith("Updated,")) {
+                String updatedStr = line.substring(8).trim();
+                statusInfo.setLastUpdate(convertUtcToDisplayTime(updatedStr));
+                continue;
+            }
+
             if (line.equals("OpenVPN CLIENT LIST")) {
                 inClientList = true;
                 continue;
             }
-            
-            // Конец секции CLIENT LIST
+
             if (line.equals("ROUTING TABLE")) {
                 break;
             }
-            
-            // Пропускаем заголовок таблицы
+
             if (line.equals("Common Name,Real Address,Bytes Received,Bytes Sent,Connected Since")) {
                 continue;
             }
-            
-            // Парсим строки подключений
+
             if (inClientList && !line.isEmpty() && line.contains(",")) {
-                ClientConnection connection = parseConnectionLine(line);
+                ClientConnection connection = parseLegacyConnectionLine(line);
                 if (connection != null) {
                     statusInfo.addConnection(connection);
                 }
             }
         }
-        
+
         return statusInfo;
     }
 
     /**
-     * Парсит строку подключения
+     * Парсит строку подключения (legacy)
      * Формат: kocmoc,46.39.231.140:14067,12689039,25101420,2025-12-16 14:18:32
      */
-    private ClientConnection parseConnectionLine(String line) {
+    private ClientConnection parseLegacyConnectionLine(String line) {
         try {
             String[] parts = line.split(",");
             if (parts.length < 5) {
@@ -203,8 +347,8 @@ public class OpenVpnStatusService {
             // Время подключения
             if (parts.length >= 5) {
                 String connectedSince = parts[4].trim();
-                String moscowTime = convertToMoscowTime(connectedSince);
-                connection.setConnectedSince(moscowTime);
+                String displayTime = convertUtcToDisplayTime(connectedSince);
+                connection.setConnectedSince(displayTime);
                 
                 // Вычисляем длительность подключения
                 String duration = calculateDuration(connectedSince);

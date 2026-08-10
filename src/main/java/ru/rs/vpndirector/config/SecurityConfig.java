@@ -1,6 +1,7 @@
 package ru.rs.vpndirector.config;
 
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
@@ -13,10 +14,13 @@ import org.springframework.security.core.userdetails.UserDetailsService;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.security.provisioning.InMemoryUserDetailsManager;
+import org.springframework.security.web.firewall.HttpStatusRequestRejectedHandler;
+import org.springframework.security.web.firewall.RequestRejectedHandler;
 
 @Configuration
 @EnableWebSecurity
 @RequiredArgsConstructor
+@Slf4j
 public class SecurityConfig extends WebSecurityConfigurerAdapter {
 
     private final SecurityProperties securityProperties;
@@ -24,6 +28,22 @@ public class SecurityConfig extends WebSecurityConfigurerAdapter {
     @Override
     public void configure(WebSecurity web) throws Exception {
         web.ignoring().antMatchers("/css/**", "/js/**", "/webjars/**", "/favicon.png", "/favicon.ico", "/images/**");
+        // Явно: отклонение firewall не пробрасывается как необработанное исключение
+        web.requestRejectedHandler(requestRejectedHandler());
+    }
+
+    /**
+     * Подозрительный URL (например, с ";") → HTTP 400 и WARN, без падения сервиса и без ERROR-стека.
+     */
+    @Bean
+    public RequestRejectedHandler requestRejectedHandler() {
+        return (request, response, ex) -> {
+            log.warn("Отклонён подозрительный запрос: {} {} — {}",
+                request.getMethod(), request.getRequestURI(), ex.getMessage());
+            if (!response.isCommitted()) {
+                new HttpStatusRequestRejectedHandler().handle(request, response, ex);
+            }
+        };
     }
 
     @Override

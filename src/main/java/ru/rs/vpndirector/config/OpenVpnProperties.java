@@ -15,6 +15,8 @@ public class OpenVpnProperties {
     private String configEncoding = null; // Явно указанная кодировка (если null - определяется автоматически)
     private String easyRsaPath = "/etc/openvpn/easy-rsa/2.0";
     private String statusFileName = "openvpn-status1194.log";
+    /** Префикс systemd unit: openvpn-server@server, openvpn@server */
+    private String systemdUnitPrefix = "openvpn-server";
     
     /**
      * Возвращает полный путь к файлу конфигурации
@@ -41,6 +43,13 @@ public class OpenVpnProperties {
             return fileName.substring(0, lastDotIndex);
         }
         return fileName;
+    }
+
+    /**
+     * Имя systemd-сервиса для перезапуска, например openvpn-server@server
+     */
+    public String getSystemdServiceName() {
+        return systemdUnitPrefix + "@" + getConfigFileNameWithoutExtension();
     }
 }
 

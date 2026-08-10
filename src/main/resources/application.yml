@@ -2,10 +2,15 @@ spring:
   application:
     name: vpndirector
 
+app:
+  server-timezone: ${SERVER_TIMEZONE:3}  # Смещение от UTC в часах (3 = UTC+3, Москва)
+
 server:
   port: ${SERVER_PORT:8080}
   servlet:
     context-path: ${SERVER_CONTEXT_PATH:/}
+    session:
+      tracking-modes: cookie  # без ;jsessionid= в URL (StrictHttpFirewall отклоняет ";")
 
 openvpn:
   server:
@@ -14,6 +19,7 @@ openvpn:
     config-encoding: ${OPENVPN_CONFIG_ENCODING:Windows-1251}  # Кодировка файла конфигурации (Windows-1251, UTF-8, CP866, KOI8-R и т.д.)
     easy-rsa-path: ${OPENVPN_EASY_RSA_PATH:/etc/openvpn/easy-rsa/2.0}
     status-file-name: ${OPENVPN_STATUS_FILE_NAME:openvpn-status1194.log}  # Имя файла статуса OpenVPN
+    systemd-unit-prefix: ${OPENVPN_SYSTEMD_UNIT_PREFIX:openvpn-server}  # Префикс unit: openvpn-server@server или openvpn@server
 
 security:
   user:

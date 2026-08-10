@@ -27,12 +27,9 @@ public class OpenVpnServiceController {
     @PostMapping("/restart")
     public String restartOpenVpn(RedirectAttributes redirectAttributes) {
         try {
-            // Получаем имя файла конфигурации без расширения для systemctl
-            String configName = openVpnProperties.getConfigFileNameWithoutExtension();
-            String serviceName = "openvpn@" + configName;
-            log.info("Перезапуск OpenVPN сервиса: {}", serviceName);
-            
-            // Попытка перезапустить OpenVPN через systemctl
+            String serviceName = openVpnProperties.getSystemdServiceName();
+            log.info("Перезапуск OpenVPN сервиса: systemctl restart {}", serviceName);
+
             ProcessBuilder processBuilder = new ProcessBuilder("sudo", "systemctl", "restart", serviceName);
             processBuilder.redirectErrorStream(true);
             Process process = processBuilder.start();
@@ -49,11 +46,16 @@ public class OpenVpnServiceController {
             int exitCode = process.waitFor();
             
             if (exitCode == 0) {
-                redirectAttributes.addFlashAttribute("success", 
-                    "OpenVPN успешно перезапущен!");
+                redirectAttributes.addFlashAttribute("success",
+                    "OpenVPN успешно перезапущен (" + serviceName + ")!");
             } else {
-                redirectAttributes.addFlashAttribute("error", 
-                    "Ошибка при перезапуске OpenVPN. Код выхода: " + exitCode);
+                String details = output.toString().trim();
+                String message = "Ошибка при перезапуске " + serviceName + ". Код выхода: " + exitCode;
+                if (!details.isEmpty()) {
+                    message += ". " + details;
+                }
+                log.warn("{}", message);
+                redirectAttributes.addFlashAttribute("error", message);
             }
         } catch (Exception e) {
             log.error("Ошибка при перезапуске OpenVPN", e);

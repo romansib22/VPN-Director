@@ -46,12 +46,11 @@ public class CertificateGenerationService {
             // build-key задает 10 вопросов (все Enter для значений по умолчанию),
             // затем 2 вопроса "Sign the certificate? [y/n]" (y) и "commit? [y/n]" (y)
             
-            // Отключаем буферизацию вывода для более надежной работы
             String command = String.format(
                 "cd %s && . %s/vars && stdbuf -oL -eL ./build-key %s",
                 easyRsaPath, easyRsaPath, certificateName
             );
-            
+
             ProcessBuilder processBuilder = new ProcessBuilder("bash", "-c", command);
             processBuilder.redirectErrorStream(true);
             Process process = processBuilder.start();
