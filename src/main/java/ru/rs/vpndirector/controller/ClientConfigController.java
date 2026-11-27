@@ -4,6 +4,7 @@ import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.core.io.Resource;
 import org.springframework.core.io.UrlResource;
+import org.springframework.http.ContentDisposition;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
@@ -13,8 +14,10 @@ import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import ru.rs.vpndirector.config.OpenVpnProperties;
+import ru.rs.vpndirector.util.SafeNames;
 
 import java.io.IOException;
+import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
@@ -60,23 +63,32 @@ public class ClientConfigController {
     @PostMapping("/download-config")
     public ResponseEntity<Resource> downloadConfig(@RequestParam String filename) {
         try {
-            String clientsDirPath = openVpnProperties.getOpenvpnRoot() + "/clients";
-            Path filePath = Paths.get(clientsDirPath).resolve(filename);
-            
-            if (!Files.exists(filePath)) {
+            if (!SafeNames.isPathSegmentValid(filename) || !isConfigFile(filename)) {
                 return ResponseEntity.notFound().build();
             }
-            
+
+            Path clientsDir = Paths.get(openVpnProperties.getOpenvpnRoot(), "clients").toAbsolutePath().normalize();
+            // normalize + startsWith: файл обязан лежать внутри каталога clients (без ../)
+            Path filePath = clientsDir.resolve(filename).normalize();
+            if (!filePath.startsWith(clientsDir) || !Files.isRegularFile(filePath)) {
+                return ResponseEntity.notFound().build();
+            }
+
             Resource resource = new UrlResource(filePath.toUri());
-            
+
             return ResponseEntity.ok()
                 .contentType(MediaType.APPLICATION_OCTET_STREAM)
-                .header(HttpHeaders.CONTENT_DISPOSITION, "attachment; filename=\"" + filename + "\"")
+                .header(HttpHeaders.CONTENT_DISPOSITION,
+                    ContentDisposition.attachment().filename(filename, StandardCharsets.UTF_8).build().toString())
                 .body(resource);
         } catch (Exception e) {
             log.error("Ошибка при скачивании конфигурации", e);
             return ResponseEntity.internalServerError().build();
         }
+    }
+
+    private static boolean isConfigFile(String filename) {
+        return filename.endsWith(".ovpn") || filename.endsWith(".conf");
     }
 }
 

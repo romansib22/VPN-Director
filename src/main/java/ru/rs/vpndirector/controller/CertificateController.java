@@ -4,6 +4,7 @@ import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.core.io.ByteArrayResource;
 import org.springframework.core.io.Resource;
+import org.springframework.http.ContentDisposition;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
@@ -13,6 +14,7 @@ import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import ru.rs.vpndirector.config.OpenVpnProperties;
+import ru.rs.vpndirector.util.SafeNames;
 
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
@@ -117,45 +119,55 @@ public class CertificateController {
      */
     private ResponseEntity<Resource> generateAndDownloadConfig(String certificateName, String templateFileName, String filenameSuffix) {
         try {
+            if (!SafeNames.isPathSegmentValid(certificateName)) {
+                return ResponseEntity.badRequest().build();
+            }
+
             String openvpnRoot = openVpnProperties.getOpenvpnRoot();
             String easyRsaPath = openVpnProperties.getEasyRsaPath();
-            String keysDir = easyRsaPath + "/keys";
-            
+            Path keysDir = Paths.get(easyRsaPath, "keys").toAbsolutePath().normalize();
+
             // Читаем шаблон
             Path templatePath = Paths.get(openvpnRoot, templateFileName);
             if (!Files.exists(templatePath)) {
                 log.error("Шаблон не найден: {}", templatePath);
                 return ResponseEntity.notFound().build();
             }
-            
+
             String template = new String(Files.readAllBytes(templatePath), StandardCharsets.UTF_8);
-            
+
             // Читаем содержимое файлов сертификата и ключа
-            Path keyFile = Paths.get(keysDir, certificateName + ".key");
-            Path certFile = Paths.get(keysDir, certificateName + ".crt");
-            
+            // normalize + startsWith: файлы обязаны лежать внутри каталога keys (без ../)
+            Path keyFile = keysDir.resolve(certificateName + ".key").normalize();
+            Path certFile = keysDir.resolve(certificateName + ".crt").normalize();
+
+            if (!keyFile.startsWith(keysDir) || !certFile.startsWith(keysDir)) {
+                return ResponseEntity.badRequest().build();
+            }
+
             if (!Files.exists(keyFile) || !Files.exists(certFile)) {
                 log.error("Файлы сертификата не найдены для: {}", certificateName);
                 return ResponseEntity.notFound().build();
             }
-            
+
             String keyContent = new String(Files.readAllBytes(keyFile), StandardCharsets.UTF_8);
             String certContent = new String(Files.readAllBytes(certFile), StandardCharsets.UTF_8);
-            
+
             // Заменяем плейсхолдеры в шаблоне
             String configContent = template
                 .replace("{key}", keyContent)
                 .replace("{cert}", certContent);
-            
+
             // Создаем ресурс из байтов
             byte[] configBytes = configContent.getBytes(StandardCharsets.UTF_8);
             ByteArrayResource resource = new ByteArrayResource(configBytes);
-            
+
             String filename = certificateName + filenameSuffix + ".ovpn";
-            
+
             return ResponseEntity.ok()
                 .contentType(MediaType.APPLICATION_OCTET_STREAM)
-                .header(HttpHeaders.CONTENT_DISPOSITION, "attachment; filename=\"" + filename + "\"")
+                .header(HttpHeaders.CONTENT_DISPOSITION,
+                    ContentDisposition.attachment().filename(filename, StandardCharsets.UTF_8).build().toString())
                 .body(resource);
                 
         } catch (IOException e) {

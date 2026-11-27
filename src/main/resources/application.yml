@@ -1,6 +1,10 @@
 spring:
   application:
     name: vpndirector
+  config:
+    # .env рядом с jar (относительно рабочего каталога). Формат properties: комментарии — только отдельной
+    # строкой, "\" — escape-символ. Реальные переменные окружения имеют приоритет над .env
+    import: optional:file:.env[.properties]
 
 app:
   server-timezone: ${SERVER_TIMEZONE:3}  # Смещение от UTC в часах (3 = UTC+3, Москва)
@@ -24,5 +28,12 @@ openvpn:
 security:
   user:
     name: ${SECURITY_USER_NAME:admin}
+    # Обязательный: без пароля приложение не стартует (пустой пароль не допускается)
     password: ${SECURITY_USER_PASSWORD:}
+  bruteforce:
+    max-attempts: ${SECURITY_BRUTEFORCE_MAX_ATTEMPTS:3}
+    lock-minutes: ${SECURITY_BRUTEFORCE_LOCK_MINUTES:15}
+    failure-window-minutes: ${SECURITY_BRUTEFORCE_FAILURE_WINDOW_MINUTES:10}
+    # Прокси, которым доверяем X-Real-IP / X-Forwarded-For (через запятую); приложение должно быть доступно только через них
+    trusted-proxies: ${SECURITY_TRUSTED_PROXIES:127.0.0.1,::1}
 

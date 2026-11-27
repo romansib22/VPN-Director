@@ -6,7 +6,7 @@ import org.springframework.web.bind.annotation.ModelAttribute;
 @ControllerAdvice
 public class WebControllerAdvice {
 
-    private static final String APP_VERSION = "0.0.6";
+    private static final String APP_VERSION = "0.1.0";
 
     @ModelAttribute("appVersion")
     public String appVersion() {

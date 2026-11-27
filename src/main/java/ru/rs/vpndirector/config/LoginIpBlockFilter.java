@@ -2,32 +2,36 @@ package ru.rs.vpndirector.config;
 
 import lombok.RequiredArgsConstructor;
 import org.springframework.security.authentication.LockedException;
-import org.springframework.stereotype.Component;
+import org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter;
 import org.springframework.web.filter.OncePerRequestFilter;
 import ru.rs.vpndirector.service.LoginAttemptService;
 import ru.rs.vpndirector.util.ClientIpResolver;
 
-import javax.servlet.FilterChain;
-import javax.servlet.ServletException;
-import javax.servlet.http.HttpServletRequest;
-import javax.servlet.http.HttpServletResponse;
+import jakarta.servlet.FilterChain;
+import jakarta.servlet.ServletException;
+import jakarta.servlet.http.HttpServletRequest;
+import jakarta.servlet.http.HttpServletResponse;
 import java.io.IOException;
 
 /**
  * Блокирует POST /login для IP, превысивших лимит неудачных попыток.
+ * <p>
+ * Не является servlet-фильтром: экземпляр включается в цепочку Spring Security
+ * непосредственно перед {@link UsernamePasswordAuthenticationFilter} (см. {@link SecurityConfig}),
+ * иначе проверка пароля выполнится раньше блокировки.
  */
-@Component
 @RequiredArgsConstructor
 public class LoginIpBlockFilter extends OncePerRequestFilter {
 
     private final LoginAttemptService loginAttemptService;
     private final LoginFailureHandler loginFailureHandler;
+    private final ClientIpResolver clientIpResolver;
 
     @Override
     protected void doFilterInternal(HttpServletRequest request, HttpServletResponse response,
                                     FilterChain filterChain) throws ServletException, IOException {
         if (isLoginPost(request)) {
-            String ip = ClientIpResolver.resolve(request);
+            String ip = clientIpResolver.resolve(request);
             if (loginAttemptService.isBlocked(ip)) {
                 loginFailureHandler.onAuthenticationFailure(
                     request,

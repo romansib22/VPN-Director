@@ -6,18 +6,20 @@ import org.springframework.stereotype.Component;
 import ru.rs.vpndirector.service.LoginAttemptService;
 import ru.rs.vpndirector.util.ClientIpResolver;
 
-import javax.servlet.ServletException;
-import javax.servlet.http.HttpServletRequest;
-import javax.servlet.http.HttpServletResponse;
+import jakarta.servlet.ServletException;
+import jakarta.servlet.http.HttpServletRequest;
+import jakarta.servlet.http.HttpServletResponse;
 import java.io.IOException;
 
 @Component
 public class LoginSuccessHandler extends SavedRequestAwareAuthenticationSuccessHandler {
 
     private final LoginAttemptService loginAttemptService;
+    private final ClientIpResolver clientIpResolver;
 
-    public LoginSuccessHandler(LoginAttemptService loginAttemptService) {
+    public LoginSuccessHandler(LoginAttemptService loginAttemptService, ClientIpResolver clientIpResolver) {
         this.loginAttemptService = loginAttemptService;
+        this.clientIpResolver = clientIpResolver;
         setDefaultTargetUrl("/");
         setAlwaysUseDefaultTargetUrl(true);
     }
@@ -25,7 +27,7 @@ public class LoginSuccessHandler extends SavedRequestAwareAuthenticationSuccessH
     @Override
     public void onAuthenticationSuccess(HttpServletRequest request, HttpServletResponse response,
                                         Authentication authentication) throws IOException, ServletException {
-        loginAttemptService.loginSucceeded(ClientIpResolver.resolve(request));
+        loginAttemptService.loginSucceeded(clientIpResolver.resolve(request));
         super.onAuthenticationSuccess(request, response, authentication);
     }
 }

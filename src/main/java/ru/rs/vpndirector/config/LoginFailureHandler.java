@@ -8,9 +8,9 @@ import org.springframework.stereotype.Component;
 import ru.rs.vpndirector.service.LoginAttemptService;
 import ru.rs.vpndirector.util.ClientIpResolver;
 
-import javax.servlet.ServletException;
-import javax.servlet.http.HttpServletRequest;
-import javax.servlet.http.HttpServletResponse;
+import jakarta.servlet.ServletException;
+import jakarta.servlet.http.HttpServletRequest;
+import jakarta.servlet.http.HttpServletResponse;
 import java.io.IOException;
 
 @Slf4j
@@ -18,22 +18,24 @@ import java.io.IOException;
 public class LoginFailureHandler extends SimpleUrlAuthenticationFailureHandler {
 
     private final LoginAttemptService loginAttemptService;
+    private final ClientIpResolver clientIpResolver;
 
-    public LoginFailureHandler(LoginAttemptService loginAttemptService) {
+    public LoginFailureHandler(LoginAttemptService loginAttemptService, ClientIpResolver clientIpResolver) {
         this.loginAttemptService = loginAttemptService;
+        this.clientIpResolver = clientIpResolver;
         setDefaultFailureUrl("/login?error");
     }
 
     @Override
     public void onAuthenticationFailure(HttpServletRequest request, HttpServletResponse response,
                                         AuthenticationException exception) throws IOException, ServletException {
-        String ip = ClientIpResolver.resolve(request);
+        String ip = clientIpResolver.resolve(request);
         if (exception instanceof LockedException) {
             getRedirectStrategy().sendRedirect(request, response, "/login?blocked");
             return;
         }
         boolean blocked = loginAttemptService.loginFailed(ip);
-        log.info("Неудачная попытка входа с IP {}", ip);
+        log.warn("Неудачная попытка входа с IP {}: {}", ip, exception.getMessage());
         if (blocked) {
             getRedirectStrategy().sendRedirect(request, response, "/login?blocked");
         } else {

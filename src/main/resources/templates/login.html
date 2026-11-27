@@ -114,6 +114,26 @@
             font-size: 14px;
             border-left: 4px solid #3c3;
         }
+
+        .blocked-message {
+            background: #fff4e5;
+            color: #b36b00;
+            padding: 12px;
+            border-radius: 8px;
+            margin-bottom: 20px;
+            font-size: 14px;
+            border-left: 4px solid #e0a030;
+        }
+
+        .expired-message {
+            background: #eef4ff;
+            color: #3366cc;
+            padding: 12px;
+            border-radius: 8px;
+            margin-bottom: 20px;
+            font-size: 14px;
+            border-left: 4px solid #6699ff;
+        }
     </style>
 </head>
 <body>
@@ -125,6 +145,15 @@
 
         <div th:if="${param.error}" class="error-message">
             Неверное имя пользователя или пароль
+        </div>
+
+        <div th:if="${param.blocked}" class="blocked-message">
+            Слишком много неудачных попыток входа. Повторите через
+            <span th:text="${blockedMinutes}">15</span> мин.
+        </div>
+
+        <div th:if="${param.expired}" class="expired-message">
+            Сессия истекла. Войдите снова.
         </div>
 
         <div th:if="${param.logout}" class="logout-message">

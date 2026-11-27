@@ -9,6 +9,7 @@ import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.servlet.mvc.support.RedirectAttributes;
 import ru.rs.vpndirector.service.CertificateGenerationService;
+import ru.rs.vpndirector.util.SafeNames;
 
 @Slf4j
 @Controller
@@ -31,6 +32,14 @@ public class CertificateGenerationController {
             }
 
             certificateName = certificateName.trim();
+
+            // Имя попадает в команду bash — пропускаем только строго ограниченный набор символов
+            if (!SafeNames.isCertificateNameValid(certificateName)) {
+                redirectAttributes.addFlashAttribute("error",
+                    "Недопустимое имя сертификата. Допустимы латинские буквы, цифры, точка, дефис "
+                    + "и подчёркивание (1–64 символа, первый символ — буква или цифра)");
+                return "redirect:/generate-certificate";
+            }
 
             // Проверяем, существует ли уже сертификат
             if (certificateGenerationService.certificateExists(certificateName)) {

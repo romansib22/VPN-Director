@@ -4,6 +4,7 @@ import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import ru.rs.vpndirector.config.OpenVpnProperties;
+import ru.rs.vpndirector.util.SafeNames;
 
 import java.io.BufferedReader;
 import java.io.InputStreamReader;
@@ -29,9 +30,11 @@ public class CertificateGenerationService {
      */
     public String generateCertificate(String certificateName) {
         try {
+            requireValidName(certificateName);
+
             String easyRsaPath = openVpnProperties.getEasyRsaPath();
             String keysDir = easyRsaPath + "/keys";
-            
+
             // Проверяем, существует ли уже сертификат с таким именем
             Path csrFile = Paths.get(keysDir, certificateName + ".csr");
             Path keyFile = Paths.get(keysDir, certificateName + ".key");
@@ -155,9 +158,22 @@ public class CertificateGenerationService {
      * Проверяет, существует ли сертификат с указанным именем
      */
     public boolean certificateExists(String certificateName) {
+        requireValidName(certificateName);
         String keysDir = openVpnProperties.getEasyRsaPath() + "/keys";
         Path crtFile = Paths.get(keysDir, certificateName + ".crt");
         return Files.exists(crtFile);
+    }
+
+    /**
+     * Имя сертификата попадает в команду bash и в имена файлов, поэтому допускает только
+     * буквы, цифры, точку, дефис и подчёркивание (первый символ — буква или цифра).
+     */
+    private static void requireValidName(String certificateName) {
+        if (!SafeNames.isCertificateNameValid(certificateName)) {
+            throw new IllegalArgumentException(
+                "Недопустимое имя сертификата. Допустимы латинские буквы, цифры, точка, дефис "
+                + "и подчёркивание (1–64 символа, первый символ — буква или цифра)");
+        }
     }
 }
 

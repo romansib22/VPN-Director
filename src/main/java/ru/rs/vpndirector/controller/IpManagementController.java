@@ -25,9 +25,14 @@ public class IpManagementController {
     }
 
     @PostMapping("/add-ip")
-    public String addIp(@RequestParam String ipAddress, 
+    public String addIp(@RequestParam String ipAddress,
                         @RequestParam(required = false) String comment,
                         RedirectAttributes redirectAttributes) {
+        // Комментарий пишется в server.conf строкой "#..." — перенос строки внёс бы произвольную директиву
+        if (comment != null && hasLineBreak(comment)) {
+            redirectAttributes.addFlashAttribute("error", "Комментарий не должен содержать переносов строк");
+            return "redirect:/add-ip";
+        }
         try {
             // Валидация IP адреса
             InetAddress.getByName(ipAddress);
@@ -74,6 +79,11 @@ public class IpManagementController {
 
     @PostMapping("/add-ip-by-domain")
     public String addIpByDomain(@RequestParam String domain, RedirectAttributes redirectAttributes) {
+        // Домен пишется в server.conf строкой "#..." — перенос строки внёс бы произвольную директиву
+        if (hasLineBreak(domain)) {
+            redirectAttributes.addFlashAttribute("error", "Неверное имя домена");
+            return "redirect:/add-ip-by-domain";
+        }
         try {
             // Получаем IP адрес по домену
             InetAddress address = InetAddress.getByName(domain);
@@ -122,6 +132,10 @@ public class IpManagementController {
             redirectAttributes.addFlashAttribute("error", "Ошибка: " + e.getMessage());
         }
         return "redirect:/add-ip-by-domain";
+    }
+
+    private static boolean hasLineBreak(String value) {
+        return value.indexOf('\n') >= 0 || value.indexOf('\r') >= 0;
     }
 }
 

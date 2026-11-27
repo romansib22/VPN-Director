@@ -11,6 +11,6 @@ import org.springframework.stereotype.Component;
 @ConfigurationProperties(prefix = "security.user")
 public class SecurityProperties {
     private String name = "admin";
-    private String password = "admin123";
+    /** Обязательный: значения по умолчанию нет, без пароля приложение не стартует */
+    private String password;
 }
-

@@ -185,11 +185,12 @@
             <form th:action="@{/generate-certificate}" method="post">
                 <div class="form-group">
                     <label for="certificateName">Имя сертификата (CN)</label>
-                    <input type="text" id="certificateName" name="certificateName" 
-                           placeholder="client1" required 
-                           pattern="[a-zA-Z0-9_-]+"
-                           title="Только латинские буквы, цифры, дефис и подчеркивание">
-                    <small>Только латинские буквы, цифры, дефис (-) и подчеркивание (_)</small>
+                    <input type="text" id="certificateName" name="certificateName"
+                           placeholder="client1" required
+                           pattern="[A-Za-z0-9][A-Za-z0-9._-]{0,63}"
+                           maxlength="64"
+                           title="Латинские буквы, цифры, точка, дефис и подчёркивание; первый символ — буква или цифра">
+                    <small>Латинские буквы, цифры, точка (.), дефис (-) и подчёркивание (_); первый символ — буква или цифра, до 64 символов</small>
                 </div>
 
                 <div class="btn-group">
